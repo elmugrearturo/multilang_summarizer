@@ -54,7 +54,7 @@ class Lemmatizer(object):
     def __call__(self, key):
         return self[key]
 
-def lemma_index(language_code, languages_path="../languages/"):
+def lemma_index(language_code, languages_path="./languages/"):
     '''
     ast - Asturian
     bg - Bulgarian

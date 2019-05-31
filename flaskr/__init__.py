@@ -1,15 +1,12 @@
 import os
 
-from flask import Flask
+from flask import Flask, render_template, request, url_for, redirect
 
-from lemmatizer import lemma_index, language_index
+from flaskr.lemmatizer import lemma_index, language_index
 
-# lemmatizers = {}
-# for key in language_index:
-#     lemmatizers[key] = lemma_index(key)
-# 
-# import ipdb;ipdb.set_trace()
-
+lemmatizers = {}
+for key in language_index:
+    lemmatizers[key] = lemma_index(key)
 
 def create_app(test_config=None):
     # create and configure the app
@@ -35,6 +32,33 @@ def create_app(test_config=None):
     # a simple page that says hello
     @app.route('/hello')
     def hello():
-        return 'Hello, World!'
+        return render_template('index.html', name="Arturo")
+
+    @app.route('/form', methods=['POST', 'GET'])
+    def bio_data_form():
+        if request.method == "POST":
+            username = request.form['username']
+            age = request.form['age']
+            email = request.form['email']
+            hobbies = request.form['hobbies']
+            return redirect(url_for('showbio',
+                                    username=username,
+                                    age=age,
+                                    email=email,
+                                    hobbies=hobbies))
+        return render_template("form.html")
+
+    @app.route('/showbio', methods=['GET'])
+    def showbio():
+        username = request.args.get('username')
+        age = request.args.get('age')
+        email = request.args.get('email')
+        hobbies = request.args.get('hobbies')
+        return render_template("show_bio.html",
+                               username=username,
+                               age=age,
+                               email=email,
+                               hobbies=hobbies
+                               )
 
     return app
