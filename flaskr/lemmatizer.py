@@ -25,6 +25,28 @@ language_index = {"ast" : "Asturian",
                   "sv" : "Swedish",
                   "uk" : "Ukrainian"}
 
+nltk_stopwords = {"ar" : 'arabic',
+                  "az" : 'azerbaijani',
+                  "da" : 'danish',
+                  "nl" : 'dutch',
+                  "en" : 'english',
+                  "fi" : 'finnish',
+                  "fr" : 'french',
+                  "de" : 'german',
+                  "el" : 'greek',
+                  "hu" : 'hungarian',
+                  "in" : 'indonesian',
+                  "it" : 'italian',
+                  "kk" : 'kazakh',
+                  "ne" : 'nepali',
+                  "no" : 'norwegian',
+                  "pt" : 'portuguese',
+                  "ro" : 'romanian',
+                  "ru" : 'russian',
+                  "es" : 'spanish',
+                  "sv" : 'swedish',
+                  "tr" : 'turkish'}
+
 class Lemmatizer(object):
 
     def __init__(self, term_dictionary, language_code, language_name):

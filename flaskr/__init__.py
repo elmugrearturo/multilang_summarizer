@@ -2,11 +2,13 @@ import os
 
 from flask import Flask, render_template, request, url_for, redirect
 
-from flaskr.lemmatizer import lemma_index, language_index
+from flaskr.lemmatizer import lemma_index, language_index, nltk_stopwords
 
 lemmatizers = {}
 for key in language_index:
-    lemmatizers[key] = lemma_index(key)
+    if key in nltk_stopwords.keys():
+        lemmatizers[key] = lemma_index(key)
+print(lemmatizers)
 
 def create_app(test_config=None):
     # create and configure the app
