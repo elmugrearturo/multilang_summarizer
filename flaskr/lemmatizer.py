@@ -73,8 +73,16 @@ class Lemmatizer(object):
     def __repr__(self):
         return str(self)
 
-    def __call__(self, key):
-        return self[key]
+    def lemmatize(self, paragraph, remove_stopwords=True):
+        # Separate sentences
+
+        # Separate tokens
+
+        #
+        pass
+
+    #def __call__(self, key):
+    #    return self[key]
 
 def lemma_index(language_code, languages_path="./languages/"):
     '''
