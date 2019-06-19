@@ -1,4 +1,11 @@
 import os
+from functools import partial
+from sentence_splitter import SentenceSplitter
+import nltk.data
+from nltk.corpus import stopwords
+
+import string
+
 from collections import OrderedDict
 
 language_index = {"ast" : "Asturian",
@@ -47,13 +54,80 @@ nltk_stopwords = {"ar" : 'arabic',
                   "sv" : 'swedish',
                   "tr" : 'turkish'}
 
+punkt_tokenizers = {"da" : 'danish.pickle',
+                    "et" : 'estonian.pickle',
+                    "de" : 'german.pickle',
+                    "no" : 'norwegian.pickle',
+                    "sl" : 'slovene.pickle',
+                    "tr" : 'turkish.pickle',
+                    "nl" : 'dutch.pickle',
+                    "fi" : 'finnish.pickle',
+                    "el" : 'greek.pickle',
+                    "pl" : 'polish.pickle',
+                    "es" : 'spanish.pickle',
+                    "cs" : 'czech.pickle',
+                    "en" : 'english.pickle',
+                    "fr" : 'french.pickle',
+                    "it" : 'italian.pickle',
+                    "pt" : 'portuguese.pickle',
+                    "sv" : 'swedish.pickle'}
+
+splitter_sent_tok = {"ca" : 'Catalan (ca)',
+                     "cs" : 'Czech (cs)',
+                     "da" : 'Danish (da)',
+                     "nl" : 'Dutch (nl)',
+                     "en" : 'English (en)',
+                     "fi" : 'Finnish (fi)',
+                     "fr" : 'French (fr)',
+                     "de" : 'German (de)',
+                     "el" : 'Greek (el)',
+                     "hu" : 'Hungarian (hu)',
+                     "is" : 'Icelandic (is)',
+                     "it" : 'Italian (it)',
+                     "lv" : 'Latvian (lv)',
+                     "lt" : 'Lithuanian (lt)',
+                     "no" : 'Norwegian (Bokmål) (no)',
+                     "pl" : 'Polish (pl)',
+                     "pt" : 'Portuguese (pt)',
+                     "ro" : 'Romanian (ro)',
+                     "ru" : 'Russian (ru)',
+                     "sk" : 'Slovak (sk)',
+                     "sl" : 'Slovene (sl)',
+                     "es" : 'Spanish (es)',
+                     "sv" : 'Swedish (sv)',
+                     "tr" : 'Turkish (tr)'}
+
 class Lemmatizer(object):
 
     def __init__(self, term_dictionary, language_code, language_name):
         self._term_dictionary = term_dictionary
         self._language_code = language_code
         self._language_name = language_name
+        if self._language_code in punkt_tokenizers:
+            splitter = nltk.data.load(
+                "tokenizers/punkt/%s" % punkt_tokenizers[self._language_code]
+                )
+            self.sent_split = splitter.tokenize
+        elif self._language_code in splitter_sent_tok:
+            splitter = SentenceSplitter(language=self._language_code)
+            self.sent_split = splitter.split
+        else:
+            # If nothing works, use naive sentence splitter
+            self.sent_split = partial(re.split,
+                                r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s')
         self._lemmas = set([lemma for lemma in term_dictionary.values()])
+        if self._language_code in nltk_stopwords:
+            self._stopwords = stopwords.words(
+                                            nltk_stopwords[self._language_code]
+                                            )
+        else:
+            print("No stopwords:", self._language_code)
+        table = str.maketrans('', '', string.punctuation)
+        self.clean_ascii_punctuation = partial(lambda t,x: x.translate(t),
+                                               table)
+
+    def tokenize(self, text):
+        return re.sub(r' +', ' ', text).split(" ")
 
     def __getitem__(self, key):
         try:
@@ -74,7 +148,9 @@ class Lemmatizer(object):
         return str(self)
 
     def lemmatize(self, paragraph, remove_stopwords=True):
+
         # Separate sentences
+        paragraph = paragraph.strip()
 
         # Separate tokens
 
