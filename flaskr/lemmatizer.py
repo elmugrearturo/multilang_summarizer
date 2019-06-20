@@ -99,6 +99,17 @@ splitter_sent_tok = {"ca" : 'Catalan (ca)',
                      "sv" : 'Swedish (sv)',
                      "tr" : 'Turkish (tr)'}
 
+pyphen_dicts = {"de" : "de_DE",
+                "en" : "en",
+                "es" : "es",
+                "fr" : "fr",
+                "hu" : "hu_HU",
+                "it" : "it",
+                "pt" : "pt_BR",
+                "ro" : "ro",
+                "sv" : "sv"}
+
+
 class Lemmatizer(object):
 
     def __init__(self, term_dictionary, language_code, language_name):
