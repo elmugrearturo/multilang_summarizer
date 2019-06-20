@@ -4,6 +4,8 @@ from sentence_splitter import SentenceSplitter
 import nltk.data
 from nltk.corpus import stopwords
 
+import re
+import regex
 import string
 
 from collections import OrderedDict
@@ -122,9 +124,8 @@ class Lemmatizer(object):
                                             )
         else:
             print("No stopwords:", self._language_code)
-        table = str.maketrans('', '', string.punctuation)
-        self.clean_ascii_punctuation = partial(lambda t,x: x.translate(t),
-                                               table)
+
+        self.remove_punctuation = partial(regex.sub, '[\p{P}]+', '')
 
     def tokenize(self, text):
         return re.sub(r' +', ' ', text).split(" ")
@@ -151,14 +152,21 @@ class Lemmatizer(object):
 
         # Separate sentences
         paragraph = paragraph.strip()
+        sentences = self.sent_split(paragraph)
 
+        tok_sentences = []
         # Separate tokens
+        for sentence in sentences:
+            tokens = self.tokenize(self.remove_punctuation(sentence))
+            # Lemmatize
+            tokens = [self[token] for token in tokens]
+            # Remove stopwords
+            if remove_stopwords:
+                tokens = [token for token in tokens if token not in
+                          self._stopwords]
+            tok_sentences.append(tokens)
 
-        #
-        pass
-
-    #def __call__(self, key):
-    #    return self[key]
+        return sentences, tok_sentences
 
 def lemma_index(language_code, languages_path="./languages/"):
     '''

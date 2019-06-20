@@ -8,8 +8,6 @@ lemmatizers = {}
 for key in language_index:
     if key in nltk_stopwords.keys():
         lemmatizers[key] = lemma_index(key)
-import ipdb;ipdb.set_trace()
-print(lemmatizers)
 
 def create_app(test_config=None):
     # create and configure the app
