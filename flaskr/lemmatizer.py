@@ -125,7 +125,8 @@ class Lemmatizer(object):
         else:
             print("No stopwords:", self._language_code)
 
-        self.remove_punctuation = partial(regex.sub, '[\p{P}]+', '')
+        # Change punctuation for whitespace
+        self.remove_punctuation = partial(regex.sub, '[\p{P}]+', ' ')
 
     def tokenize(self, text):
         return re.sub(r' +', ' ', text).split(" ")
