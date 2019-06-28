@@ -70,7 +70,54 @@ def create_index(sents_w_tokenization):
         start += len(tokenized_sent)
     return index
 
-def overlapping_summary(scoring,
+def sentence_relevance_f1(relevant_term_sequence,
+                          tokenized_sentence,
+                          likelihoods,
+                          syllabicator):
+    '''sum of rel term likelihoods / number of syls
+    '''
+    current_score = 0.
+    for term in relevant_term_sequence:
+        current_score += likelihood[term]
+    # total syllables
+    total_syllables = 0.
+    for term in tokenized_sentence:
+        total_syllables += len(syllabicator(term))
+    return current_score / total_syllables
+
+def sentence_relevance_f2(relevant_term_sequence,
+                          tokenized_sentence,
+                          relevance_table,
+                          syllabicator):
+    '''(sum of rel term lklihoods * lambda / number of terms) - syllable entropy
+    '''
+    current_score = 0.
+    for term in relevant_term_sequence:
+        current_score += relevance_table[term]
+
+    current_score /= len(tokenized_sentence)
+    syllable_entropy = syllable_metric_entropy(tokenized_sentence, syllabicator)
+    return current_score - syllable_entropy
+
+def sentence_relevance_f3(relevant_term_sequence,
+                          tokenized_sentence,
+                          lemmatized_sentence,
+                          relevance_table,
+                          tfidf_table,
+                          syllabicator):
+    '''(sum of rel term tfidf scores * lambda) / number of syllables
+    '''
+    current_score = 0.
+    for term in relevant_term_sequence:
+        tfidf_score = tfidf(term, lemmatized_sentence, tfidf_table)
+        current_score += tfidf_score * relevance_table[term]
+    # total syllables
+    total_syllables = 0.
+    for term in tokenized_sentence:
+        total_syllables += len(syllabicator(term))
+    return current_score / total_syllables
+
+def overlapping_summary(ss,
                         sents_w_tokenization_1, tokens_1,
                         sents_w_tokenization_2, tokens_2,
                         language="en", additions="none",
@@ -78,34 +125,11 @@ def overlapping_summary(scoring,
     '''Returns one summary with sentences from both docs
     previous_lcs_terms_index gives an additional value to terms'''
 
-    entropy_calculation = partial(sentence_syllable_metric_entropy,
-                                  language)
-    sylcount_calculation = partial(count_syllables,
-                                   language)
-
-    if additions != 'none':
-        if additions == "tfidf" :
-            with_tfidf = True
-        elif additions == "entropy" :
-            with_entropy = True
-        elif additions == "readability" :
-            with_readability = True
-        elif additions == "inverse_readability" :
-            with_inverse_readability = True
-        elif additions == "tfidf_readability" :
-            with_tfidf = True
-            with_readability = True
-        elif additions == "tfidf_inverse_readability" :
-            with_tfidf = True
-            with_inverse_readability = True
-        else:
-            raise ValueError("Unknown Scoring function %s" % additions)
-
-        if with_tfidf:
-            # Get idf considering all sentences (both docs)
-            idf = calculate_idf(
-                [doc[1] for doc in sents_w_tokenization_1 + sents_w_tokenization_2]
-                    )
+    if with_tfidf:
+        # Get idf considering all sentences (both docs)
+        idf = calculate_idf(
+            [doc[1] for doc in sents_w_tokenization_1 + sents_w_tokenization_2]
+                )
 
     if scoring == "zero":
         overlap_result, overlap_result_indexes = overlapping_tokens(tokens_1, tokens_2)

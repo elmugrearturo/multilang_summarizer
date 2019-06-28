@@ -167,18 +167,20 @@ class Lemmatizer(object):
         sentences = self.sent_split(paragraph)
 
         tok_sentences = []
+        lem_sentences = []
         # Separate tokens
         for sentence in sentences:
             tokens = self.tokenize(self.remove_punctuation(sentence))
             # Lemmatize
-            tokens = [self[token] for token in tokens]
+            lem_tokens = [self[token] for token in tokens]
             # Remove stopwords
             if remove_stopwords:
-                tokens = [token for token in tokens if token not in
-                          self._stopwords]
+                lem_tokens = [token for token in lem_tokens if token not in
+                              self._stopwords]
             tok_sentences.append(tokens)
+            lem_sentences.append(lem_tokens)
 
-        return sentences, tok_sentences
+        return sentences, tok_sentences, lem_sentences
 
 def lemma_index(language_code, languages_path="./languages/"):
     '''

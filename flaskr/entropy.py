@@ -92,6 +92,21 @@ def relevant_term_probabilities(relevant_terms):
         probabilities[term] = counts[term] / len(relevant_terms)
     return probabilities
 
+def syllable_metric_entropy(sentence, syllabicator):
+    syllables = []
+    for token in sentence:
+        token_syllables = syllabicator(token)
+        if len(token_syllables) == 0:
+            token_syllables = [token]
+        syllables += token_syllables
+
+    try:
+        syllable_entropy = metric_shannon_entropy(syllables)
+    except:
+        syllable_entropy = 1.0
+
+    return syllable_entropy
+
 def sentence_syllable_metric_entropy(language, sentence):
     h_en = Hyphenator('en_US')
     syl = Silabicador()
