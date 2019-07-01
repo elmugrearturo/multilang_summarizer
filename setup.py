@@ -10,7 +10,7 @@ README = (HERE / "README.md").read_text()
 setup(
     name = 'multilang-summarizer',
     packages = ['multilang_summarizer'],
-    version = '1.4b',
+    version = '1.6',
     license='GPLv3',
     description = 'Multilanguage summarizer, intended to improve text readability',
     long_description = README,
@@ -18,8 +18,11 @@ setup(
     author = 'Arturo Curiel',
     author_email = 'me@arturocuriel.com',
     url = 'http://www.arturocuriel.com',
-    download_url = 'https://github.com/elmugrearturo/multilang_summarizer/archive/v1.02-beta.tar.gz',
+    download_url = 'https://github.com/elmugrearturo/multilang_summarizer/archive/1.6.tar.gz',
     include_package_data=True,
+    package_data={
+        'multilang_summarizer': ['languages/*.txt'],
+    },
     keywords = ['SUMMARIZATION', 'MULTILANGUAGE', 'RULE-BASED'],
     install_requires=[
             'nltk',

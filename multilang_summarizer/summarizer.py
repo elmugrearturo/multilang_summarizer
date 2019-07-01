@@ -212,14 +212,14 @@ def summarizer(D_path, f_method, seq_method, lemmatizer, session_id=1):
 
     D = Document(D_path, lemmatizer)
 
-    if os.path.exists(PARENT_DIR / "data/temp/running_summary_%d.pickle" % session_id):
-        with open(PARENT_DIR / "data/temp/running_summary_%d.pickle" % session_id, "rb") as fp:
+    if os.path.exists(PARENT_DIR / ("data/temp/running_summary_%d.pickle" % session_id)):
+        with open(PARENT_DIR / ("data/temp/running_summary_%d.pickle" % session_id), "rb") as fp:
             RS = pickle.load(fp)
     else:
         RS = None
 
-    if os.path.exists(PARENT_DIR / "data/temp/lookup_table_%d.pickle" % session_id):
-        with open(PARENT_DIR / "data/temp/lookup_table_%d.pickle" % session_id, "rb") as fp:
+    if os.path.exists(PARENT_DIR / ("data/temp/lookup_table_%d.pickle" % session_id)):
+        with open(PARENT_DIR / ("data/temp/lookup_table_%d.pickle" % session_id), "rb") as fp:
             lookup_table = pickle.load(fp)
     else:
         lookup_table = {}
@@ -342,14 +342,14 @@ def summarizer(D_path, f_method, seq_method, lemmatizer, session_id=1):
             new_RS_raw_sentences.append(raw_sentence)
 
         # Replace old RS
-        with open(PARENT_DIR / "data/temp/running_summary_%d.txt" % session_id, "w") as fp:
+        with open(PARENT_DIR / ("data/temp/running_summary_%d.txt" % session_id), "w") as fp:
             fp.write("\n".join(new_RS_raw_sentences))
-        RS = Document(PARENT_DIR / "data/temp/running_summary_%d.txt" % session_id, lemmatizer)
+        RS = Document(PARENT_DIR / ("data/temp/running_summary_%d.txt" % session_id), lemmatizer)
 
-    with open(PARENT_DIR / "data/temp/running_summary_%d.pickle" % session_id, "wb") as fp:
+    with open(PARENT_DIR / ("data/temp/running_summary_%d.pickle" % session_id), "wb") as fp:
         pickle.dump(RS, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
-    with open(PARENT_DIR / "data/temp/lookup_table_%d.pickle" % session_id, "wb") as fp:
+    with open(PARENT_DIR / ("data/temp/lookup_table_%d.pickle" % session_id), "wb") as fp:
         pickle.dump(lookup_table, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
     return RS, new_RS_sent_scores

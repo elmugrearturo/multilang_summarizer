@@ -100,5 +100,5 @@ articles/
 #output/
 #sources/
 summaries/
-
+data/
 .DS_Store

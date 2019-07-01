@@ -223,11 +223,9 @@ class Lemmatizer(object):
         sv - Swedish
         uk - Ukrainian
         '''
-        if languages_path.endswith(os.sep):
-            languages_path = languages_path[:-1]
-    
-        file_path = "%s/lemmatization-%s.txt" % (languages_path, language_code)
-    
+
+        file_path = languages_path / ("lemmatization-%s.txt" % language_code)
+
         index = OrderedDict({})
         with open(file_path, "r") as f:
             for line in f:
