@@ -11,7 +11,6 @@ import os
 
 test_dir = "./test_documents/en/"
 output_dir = "./output_documents/en/"
-data_dir = "./data/en/"
 
 current_source = 1
 for f_path in os.listdir(test_dir):
@@ -26,20 +25,12 @@ for f_path in os.listdir(test_dir):
 
 # Try to create needed dirs in the beginning
 try:
-    os.makedirs(data_dir)
-except:
-    pass
-
-try:
     os.makedirs(output_dir)
 except:
     pass
 
 # Cleanup
 clean_working_memory()
-
-for f_path in os.listdir(data_dir):
-    os.remove(data_dir + f_path)
 
 for f_path in os.listdir(output_dir):
     os.remove(output_dir + f_path)
@@ -57,17 +48,17 @@ lemmatizer = Lemmatizer.for_language("en")
 RS = {}
 scores = {}
 for path in paths:
-    RS[1], scores[1] = summarizer(path, "f1", "partial", lemmatizer, 1)
-    RS[2], scores[2] = summarizer(path, "f1", "probabilistic", lemmatizer, 2)
-    RS[3], scores[3] = summarizer(path, "f1", "lcs", lemmatizer, 3)
+    RS[1], scores[1] = summarizer(path, "f1", "partial", lemmatizer, 11)
+    RS[2], scores[2] = summarizer(path, "f1", "probabilistic", lemmatizer, 12)
+    RS[3], scores[3] = summarizer(path, "f1", "lcs", lemmatizer, 13)
 
-    RS[4], scores[4] = summarizer(path, "f2", "partial", lemmatizer, 4)
-    RS[5], scores[5] = summarizer(path, "f2", "probabilistic", lemmatizer, 5)
-    RS[6], scores[6] = summarizer(path, "f2", "lcs", lemmatizer, 6)
+    RS[4], scores[4] = summarizer(path, "f2", "partial", lemmatizer, 14)
+    RS[5], scores[5] = summarizer(path, "f2", "probabilistic", lemmatizer, 15)
+    RS[6], scores[6] = summarizer(path, "f2", "lcs", lemmatizer, 16)
 
-    RS[7], scores[7] = summarizer(path, "f3", "partial", lemmatizer, 7)
-    RS[8], scores[8] = summarizer(path, "f3", "probabilistic", lemmatizer, 8)
-    RS[9], scores[9] = summarizer(path, "f3", "lcs", lemmatizer, 9)
+    RS[7], scores[7] = summarizer(path, "f3", "partial", lemmatizer, 17)
+    RS[8], scores[8] = summarizer(path, "f3", "probabilistic", lemmatizer, 18)
+    RS[9], scores[9] = summarizer(path, "f3", "lcs", lemmatizer, 19)
 
     print("Processed:", path)
 
@@ -87,6 +78,3 @@ for i in range(1, 10):
         print("\nReadability", flesch_kincaid(limited_summary.tok_sentences))
     except:
         pass
-# Cleanup
-for f_path in os.listdir(data_dir):
-    os.remove(data_dir + f_path)
