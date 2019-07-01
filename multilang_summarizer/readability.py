@@ -1,5 +1,5 @@
 from textstat.textstat import textstat
-from flaskr.spanish_syllabicator import Silabicador
+from multilang_summarizer.spanish_syllabicator import Silabicador
 
 def flesch_kincaid(tokenized_sentences):
     total_syllables = 0

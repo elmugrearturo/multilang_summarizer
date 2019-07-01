@@ -1,9 +1,9 @@
 import pickle
-from lemmatizer import Lemmatizer
+from multilang_lemmatizer import Lemmatizer
 import xml.etree.ElementTree as ET
-from summarizer import Document, summarizer, summary_limit, summary_wordlimit
+from multilang_summarizer.summarizer import Document, summarizer, summary_limit, summary_wordlimit
 
-from flaskr.readability import szigriszt_pazos
+from multilang_summarizer.readability import szigriszt_pazos
 
 import os
 

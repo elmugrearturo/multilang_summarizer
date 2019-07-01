@@ -1,13 +1,5 @@
-import copy
-import os
-import sys
-import xml.etree.ElementTree as ET
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-from string import punctuation
 
 sys.setrecursionlimit(2000)
-data_folder_original = "../res/original"
 
 def lcs_matrix(s1, s2):
     matrix=[[0 for _ in range(len(s2) + 1)] for _ in range(len(s1) + 1)]

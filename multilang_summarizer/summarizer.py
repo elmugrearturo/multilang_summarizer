@@ -10,10 +10,10 @@ from functools import partial
 
 from math import log
 
-from flaskr.lcs import *
+from multilang_summarizer.lcs import *
 
-from flaskr.tfidf import calculate_tf, calculate_idf
-from flaskr.entropy import syllable_metric_entropy
+from multilang_summarizer.tfidf import calculate_tf, calculate_idf
+from multilang_summarizer.entropy import syllable_metric_entropy
 
 def get_likelihoods(lookup_table):
     likelihoods = {}
