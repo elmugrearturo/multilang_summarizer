@@ -3,7 +3,7 @@ from distutils.core import setup
 setup(
     name = 'multilang-summarization',
     packages = ['multilang_summarization'],
-    version = '1',
+    version = 'v1.0-beta',
     license='GPLv3',
     description = 'Multilanguage summarizer, intended to improve text readability',
     author = 'Arturo Curiel',
