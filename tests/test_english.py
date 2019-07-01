@@ -81,8 +81,10 @@ for i in range(1, 10):
     print("\n\n", i, "\n\n", raw_limited_summary)
     limited_summary = Document(output_dir + "limited_summary_%d.txt" %i,
                                lemmatizer)
-    print("\nReadability", flesch_kincaid(limited_summary.tok_sentences))
-
+    try:
+        print("\nReadability", flesch_kincaid(limited_summary.tok_sentences))
+    except:
+        pass
 # Cleanup
 for f_path in os.listdir(data_dir):
     os.remove(data_dir + f_path)
