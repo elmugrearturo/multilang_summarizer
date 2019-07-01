@@ -9,7 +9,7 @@ setup(
     author = 'Arturo Curiel',
     author_email = 'me@arturocuriel.com',
     url = 'http://www.arturocuriel.com',
-    download_url = 'https://github.com/elmugrearturo/multilang_summarizer/archive/v1.0-beta.tar.gz',
+    download_url = 'https://github.com/elmugrearturo/multilang_summarizer/archive/v1.01-beta.tar.gz',
     keywords = ['SUMMARIZATION', 'MULTILANGUAGE', 'RULE-BASED'],
     install_requires=[
             'nltk',
