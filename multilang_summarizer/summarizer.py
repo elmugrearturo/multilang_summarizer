@@ -1,3 +1,5 @@
+import pathlib
+
 import copy
 import os
 import sys
@@ -14,6 +16,8 @@ from multilang_summarizer.lcs import *
 
 from multilang_summarizer.tfidf import calculate_tf, calculate_idf
 from multilang_summarizer.entropy import syllable_metric_entropy
+
+PARENT_DIR = pathlib.Path(__file__).parent
 
 def get_likelihoods(lookup_table):
     likelihoods = {}
@@ -175,8 +179,8 @@ class F3(object):
 
 def clean_working_memory():
     try:
-        for f_path in os.listdir("./data/temp/"):
-            os.remove("./data/temp/" + f_path)
+        for f_path in os.listdir(PARENT_DIR / "data/temp/"):
+            os.remove(PARENT_DIR / "data/temp/" + f_path)
     except:
         pass
 
@@ -184,7 +188,7 @@ def summarizer(D_path, f_method, seq_method, lemmatizer, session_id=1):
 
     # Try creating working memory
     try:
-        os.makedirs("./data/temp/")
+        os.makedirs(PARENT_DIR / "data/temp/")
     except:
         pass
 
@@ -208,14 +212,14 @@ def summarizer(D_path, f_method, seq_method, lemmatizer, session_id=1):
 
     D = Document(D_path, lemmatizer)
 
-    if os.path.exists("./data/temp/running_summary_%d.pickle" % session_id):
-        with open("./data/temp/running_summary_%d.pickle" % session_id, "rb") as fp:
+    if os.path.exists(PARENT_DIR / "data/temp/running_summary_%d.pickle" % session_id):
+        with open(PARENT_DIR / "data/temp/running_summary_%d.pickle" % session_id, "rb") as fp:
             RS = pickle.load(fp)
     else:
         RS = None
 
-    if os.path.exists("./data/temp/lookup_table_%d.pickle" % session_id):
-        with open("./data/temp/lookup_table_%d.pickle" % session_id, "rb") as fp:
+    if os.path.exists(PARENT_DIR / "data/temp/lookup_table_%d.pickle" % session_id):
+        with open(PARENT_DIR / "data/temp/lookup_table_%d.pickle" % session_id, "rb") as fp:
             lookup_table = pickle.load(fp)
     else:
         lookup_table = {}
@@ -338,14 +342,14 @@ def summarizer(D_path, f_method, seq_method, lemmatizer, session_id=1):
             new_RS_raw_sentences.append(raw_sentence)
 
         # Replace old RS
-        with open("./data/temp/running_summary_%d.txt" % session_id, "w") as fp:
+        with open(PARENT_DIR / "data/temp/running_summary_%d.txt" % session_id, "w") as fp:
             fp.write("\n".join(new_RS_raw_sentences))
-        RS = Document("./data/temp/running_summary_%d.txt" % session_id, lemmatizer)
+        RS = Document(PARENT_DIR / "data/temp/running_summary_%d.txt" % session_id, lemmatizer)
 
-    with open("./data/temp/running_summary_%d.pickle" % session_id, "wb") as fp:
+    with open(PARENT_DIR / "data/temp/running_summary_%d.pickle" % session_id, "wb") as fp:
         pickle.dump(RS, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
-    with open("./data/temp/lookup_table_%d.pickle" % session_id, "wb") as fp:
+    with open(PARENT_DIR / "data/temp/lookup_table_%d.pickle" % session_id, "wb") as fp:
         pickle.dump(lookup_table, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
     return RS, new_RS_sent_scores

@@ -1,3 +1,5 @@
+import pathlib
+
 import os
 from functools import partial
 from sentence_splitter import SentenceSplitter
@@ -10,6 +12,8 @@ import regex
 import string
 
 from collections import OrderedDict
+
+PARENT_DIR = pathlib.Path(__file__).parent
 
 language_index = {"ast" : "Asturian",
                   "bg" : "Bulgarian",
@@ -193,7 +197,7 @@ class Lemmatizer(object):
         return sentences, tok_sentences, lem_sentences
 
     @classmethod
-    def for_language(klass, language_code, languages_path="./languages/"):
+    def for_language(klass, language_code, languages_path=PARENT_DIR / "languages/"):
         '''
         ast - Asturian
         bg - Bulgarian

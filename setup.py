@@ -10,7 +10,7 @@ README = (HERE / "README.md").read_text()
 setup(
     name = 'multilang-summarizer',
     packages = ['multilang_summarizer'],
-    version = 'v1.02-beta',
+    version = '1.4b',
     license='GPLv3',
     description = 'Multilanguage summarizer, intended to improve text readability',
     long_description = README,

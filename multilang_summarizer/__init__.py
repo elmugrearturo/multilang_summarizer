@@ -1,3 +1,4 @@
+import pathlib
 import os
 
 from multilang_summarizer.lemmatizer import Lemmatizer, language_index, nltk_stopwords
@@ -7,3 +8,6 @@ available_languages = []
 for key in language_index:
     if key in nltk_stopwords.keys():
         available_languages.append(key)
+
+HERE = pathlib.Path(__file__).parent
+import ipdb;ipdb.set_trace()
