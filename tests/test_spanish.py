@@ -1,7 +1,7 @@
 import pickle
 from multilang_summarizer.lemmatizer import Lemmatizer
 import xml.etree.ElementTree as ET
-from multilang_summarizer.summarizer import Document, summarizer, summary_limit, summary_wordlimit
+from multilang_summarizer.summarizer import Document, clean_working_memory, summarizer, summary_limit, summary_wordlimit
 
 from multilang_summarizer.readability import szigriszt_pazos
 
@@ -13,17 +13,17 @@ test_dir = "./test_documents/es/"
 output_dir = "./output_documents/es/"
 data_dir = "./data/es/"
 
-#test_xml = "./test_documents/news05 tailandia-ninios.xml"
-#tree = ET.parse(test_xml)
-#root = tree.getroot()
-#current_text = 1
-#for child in root:
-#    for subchild in child:
-#        if subchild.tag == "content":
-#            path = "./test_documents/%d.txt" % current_text
-#            with open(path, "w") as fp:
-#                fp.write(subchild.text)
-#            current_text += 1
+test_xml = "./test_documents/news05 tailandia-ninios.xml"
+tree = ET.parse(test_xml)
+root = tree.getroot()
+current_text = 1
+for child in root:
+    for subchild in child:
+        if subchild.tag == "content":
+            path = "./test_documents/%d.txt" % current_text
+            with open(path, "w") as fp:
+                fp.write(subchild.text)
+            current_text += 1
 
 # Try to create needed dirs in the beginning
 try:
@@ -37,6 +37,7 @@ except:
     pass
 
 # Cleanup
+clean_working_memory()
 for f_path in os.listdir(data_dir):
     os.remove(data_dir + f_path)
 

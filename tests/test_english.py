@@ -1,7 +1,7 @@
 import pickle
 from multilang_summarizer.lemmatizer import Lemmatizer
 import xml.etree.ElementTree as ET
-from multilang_summarizer.summarizer import Document, summarizer, summary_limit, summary_wordlimit
+from multilang_summarizer.summarizer import Document, summarizer, clean_working_memory, summary_limit, summary_wordlimit
 
 from multilang_summarizer.readability import flesch_kincaid
 
@@ -13,7 +13,7 @@ test_dir = "./test_documents/en/"
 output_dir = "./output_documents/en/"
 data_dir = "./data/en/"
 
-current_source = 0
+current_source = 1
 for f_path in os.listdir(test_dir):
     if not f_path.endswith(".txt"):
         document_path = test_dir + f_path
@@ -36,6 +36,8 @@ except:
     pass
 
 # Cleanup
+clean_working_memory()
+
 for f_path in os.listdir(data_dir):
     os.remove(data_dir + f_path)
 

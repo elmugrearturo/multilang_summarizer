@@ -173,7 +173,17 @@ class F3(object):
             total_syllables += len(syllabicator(term))
         return current_score / total_syllables
 
+def clean_working_memory():
+    for f_path in os.listdir("./data/temp/"):
+        os.remove("./data/temp/" + f_path)
+
 def summarizer(D_path, f_method, seq_method, lemmatizer, session_id=1):
+
+    # Try creating working memory
+    try:
+        os.makedirs("./data/temp/")
+    except:
+        pass
 
     if f_method == "f1":
         f = F1()
@@ -195,14 +205,14 @@ def summarizer(D_path, f_method, seq_method, lemmatizer, session_id=1):
 
     D = Document(D_path, lemmatizer)
 
-    if os.path.exists("./data/running_summary_%d.pickle" % session_id):
-        with open("./data/running_summary_%d.pickle" % session_id, "rb") as fp:
+    if os.path.exists("./data/temp/running_summary_%d.pickle" % session_id):
+        with open("./data/temp/running_summary_%d.pickle" % session_id, "rb") as fp:
             RS = pickle.load(fp)
     else:
         RS = None
 
-    if os.path.exists("./data/lookup_table_%d.pickle" % session_id):
-        with open("./data/lookup_table_%d.pickle" % session_id, "rb") as fp:
+    if os.path.exists("./data/temp/lookup_table_%d.pickle" % session_id):
+        with open("./data/temp/lookup_table_%d.pickle" % session_id, "rb") as fp:
             lookup_table = pickle.load(fp)
     else:
         lookup_table = {}
@@ -325,14 +335,14 @@ def summarizer(D_path, f_method, seq_method, lemmatizer, session_id=1):
             new_RS_raw_sentences.append(raw_sentence)
 
         # Replace old RS
-        with open("./data/running_summary_%d.txt" % session_id, "w") as fp:
+        with open("./data/temp/running_summary_%d.txt" % session_id, "w") as fp:
             fp.write("\n".join(new_RS_raw_sentences))
-        RS = Document("./data/running_summary_%d.txt" % session_id, lemmatizer)
+        RS = Document("./data/temp/running_summary_%d.txt" % session_id, lemmatizer)
 
-    with open("./data/running_summary_%d.pickle" % session_id, "wb") as fp:
+    with open("./data/temp/running_summary_%d.pickle" % session_id, "wb") as fp:
         pickle.dump(RS, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
-    with open("./data/lookup_table_%d.pickle" % session_id, "wb") as fp:
+    with open("./data/temp/lookup_table_%d.pickle" % session_id, "wb") as fp:
         pickle.dump(lookup_table, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
     return RS, new_RS_sent_scores
