@@ -16,6 +16,7 @@ setup(
             'pyphen',
             'textstat',
             'sentence-splitter',
+            'numpy',
         ],
     classifiers=[
       'Development Status :: 4 - Beta',
