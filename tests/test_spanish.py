@@ -7,9 +7,9 @@ from multilang_summarizer.readability import szigriszt_pazos
 
 import os
 
-test_dir = "./test_documents/"
-output_dir = "./output_documents/"
-data_dir = "./data/"
+test_dir = "./test_documents/es/"
+output_dir = "./output_documents/es/"
+data_dir = "./data/es/"
 
 #test_xml = "./test_documents/news05 tailandia-ninios.xml"
 #tree = ET.parse(test_xml)
@@ -23,10 +23,25 @@ data_dir = "./data/"
 #                fp.write(subchild.text)
 #            current_text += 1
 
+# Try to create needed dirs in the beginning
+try:
+    os.makedirs(data_dir)
+except:
+    pass
+
+try:
+    os.makedirs(output_dir)
+except:
+    pass
+
 # Cleanup
 for f_path in os.listdir(data_dir):
     os.remove(data_dir + f_path)
 
+for f_path in os.listdir(output_dir):
+    os.remove(output_dir + f_path)
+
+# Read input paths
 paths = []
 for f_path in os.listdir(test_dir):
     if f_path.endswith(".txt"):
@@ -51,15 +66,20 @@ for path in paths:
 
     print("Processed:", path)
 
-byte_limit = 815
+word_limit = 125 # number of words
 for i in range(1, 10):
-    limited_summary = summary_limit(RS[i].aligned_sentences, scores[i],
-                                    byte_limit)
+    limited_summary = summary_wordlimit(RS[i].aligned_sentences, scores[i],
+                                        word_limit)
     raw_limited_summary = "\n".join([raw_sent for raw_sent, _, _ in\
                                      limited_summary])
     with open("./output_documents/limited_summary_%d.txt" % i, "w") as fp:
         fp.write(raw_limited_summary)
+
     print("\n\n", i, "\n\n", raw_limited_summary)
     limited_summary = Document("./output_documents/limited_summary_%d.txt" %i,
                                lemmatizer)
     print("\nReadability", szigriszt_pazos(limited_summary.tok_sentences))
+
+# Cleanup
+for f_path in os.listdir(data_dir):
+    os.remove(data_dir + f_path)
