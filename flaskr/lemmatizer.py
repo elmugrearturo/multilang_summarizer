@@ -3,6 +3,7 @@ from functools import partial
 from sentence_splitter import SentenceSplitter
 import nltk.data
 from nltk.corpus import stopwords
+import pyphen
 
 import re
 import regex
@@ -138,6 +139,12 @@ class Lemmatizer(object):
 
         # Change punctuation for whitespace
         self.remove_punctuation = partial(regex.sub, '[\p{P}]+', ' ')
+
+        self.pyphen_dic = pyphen.Pyphen(lang=pyphen_dicts[self._language_code])
+
+    def syllabicator(self, term):
+        hyphenated = self.pyphen_dic.inserted(term)
+        return hyphenated.split("-")
 
     def tokenize(self, text):
         return re.sub(r' +', ' ', text).split(" ")

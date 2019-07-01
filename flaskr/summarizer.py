@@ -2,6 +2,8 @@ import copy
 import os
 import sys
 
+import pickle
+
 from collections import Counter
 
 from functools import partial
@@ -12,6 +14,15 @@ from flaskr.lcs import *
 
 from flaskr.tfidf import calculate_tf, calculate_idf
 from flaskr.entropy import sentence_syllable_metric_entropy, conditional_entropy
+
+def get_likelihoods(lookup_table):
+    likelihoods = {}
+    terms = list(lookup_table.keys())
+    values = list(lookup_table.values())
+    total_seen = sum(values)
+    for term in terms:
+        likelihoods[term] = lookup_table[term] / total_seen
+    return likelihoods
 
 def overlapping_tokens(tokens1, tokens2):
     '''fake lcs from overlapping tokens'''
@@ -61,551 +72,248 @@ def probabilistic_tokens(tokens1, tokens2):
     all_token_indexes = [t for t in all_token_indexes if t != None]
     return all_tokens, all_token_indexes
 
-def create_index(sents_w_tokenization):
+def lcs_tokens(tokens1, tokens2):
+    return lcs(tokens1, tokens2), lcs_indexes(tokens1, tokens2)
+
+def create_index(aligned_sentences):
     index = {}
     start = 0
-    for sent, tokenized_sent in sents_w_tokenization:
-        for i in range(start, start + len(tokenized_sent)):
-            index[i] = (sent, tokenized_sent)
-        start += len(tokenized_sent)
+    sentence_number = 0
+    for sent, tok_sent, lem_sent in aligned_sentences:
+        for i in range(start, start + len(lem_sent)):
+            index[i] = (sentence_number, sent, tok_sent, lem_sent)
+        start += len(lem_sent)
+        sentence_number += 1
     return index
 
-def sentence_relevance_f1(relevant_term_sequence,
-                          tokenized_sentence,
-                          likelihoods,
-                          syllabicator):
-    '''sum of rel term likelihoods / number of syls
-    '''
-    current_score = 0.
-    for term in relevant_term_sequence:
-        current_score += likelihood[term]
-    # total syllables
-    total_syllables = 0.
-    for term in tokenized_sentence:
-        total_syllables += len(syllabicator(term))
-    return current_score / total_syllables
+class Document(object):
 
-def sentence_relevance_f2(relevant_term_sequence,
-                          tokenized_sentence,
-                          relevance_table,
-                          syllabicator):
-    '''(sum of rel term lklihoods * lambda / number of terms) - syllable entropy
-    '''
-    current_score = 0.
-    for term in relevant_term_sequence:
-        current_score += relevance_table[term]
+    def __init__(self, path, lemmatizer, remove_stopwords=True):
+        self._lemmatizer = lemmatizer
+        self._syllabicator = lemmatizer.syllabicator
+        with open(path, "r") as f:
+            self.raw_text = f.read()
+        self.sentences = lemmatizer.lemmatize(self.raw_text,
+                                              remove_stopwords=remove_stopwords)
+        self.raw_sentences = self.sentences[0]
+        self.tok_sentences = self.sentences[1]
+        self.lem_sentences = self.sentences[2]
 
-    current_score /= len(tokenized_sentence)
-    syllable_entropy = syllable_metric_entropy(tokenized_sentence, syllabicator)
-    return current_score - syllable_entropy
+        self.tok_text = []
+        for sentence in self.tok_sentences:
+            for token in sentence:
+                self.tok_text.append(token)
 
-def sentence_relevance_f3(relevant_term_sequence,
-                          tokenized_sentence,
-                          lemmatized_sentence,
-                          relevance_table,
-                          tfidf_table,
-                          syllabicator):
-    '''(sum of rel term tfidf scores * lambda) / number of syllables
-    '''
-    current_score = 0.
-    for term in relevant_term_sequence:
-        tfidf_score = tfidf(term, lemmatized_sentence, tfidf_table)
-        current_score += tfidf_score * relevance_table[term]
-    # total syllables
-    total_syllables = 0.
-    for term in tokenized_sentence:
-        total_syllables += len(syllabicator(term))
-    return current_score / total_syllables
+        self.lem_text = []
+        for sentence in self.lem_sentences:
+            for token in sentence:
+                self.lem_text.append(token)
 
-def overlapping_summary(ss,
-                        sents_w_tokenization_1, tokens_1,
-                        sents_w_tokenization_2, tokens_2,
-                        language="en", additions="none",
-                        previous_overlap_terms_index={}):
-    '''Returns one summary with sentences from both docs
-    previous_lcs_terms_index gives an additional value to terms'''
+        # align sentences
+        self.aligned_sentences = []
+        for i in len(self.raw_sentences):
+            self.aligned_sentences.append((self.raw_sentences[i],
+                                           self.tok_sentences[i],
+                                           self.lem_sentences[i]))
 
-    if with_tfidf:
-        # Get idf considering all sentences (both docs)
-        idf = calculate_idf(
-            [doc[1] for doc in sents_w_tokenization_1 + sents_w_tokenization_2]
-                )
 
-    if scoring == "zero":
-        overlap_result, overlap_result_indexes = overlapping_tokens(tokens_1, tokens_2)
+class F1(Object):
+
+    def __call__(self,
+                 relevant_term_sequence,
+                 tokenized_sentence,
+                 likelihoods,
+                 syllabicator):
+        '''sum of rel term likelihoods / number of syls
+        '''
+        current_score = 0.
+        for term in relevant_term_sequence:
+            current_score += likelihood[term]
+        # total syllables
+        total_syllables = 0.
+        for term in tokenized_sentence:
+            total_syllables += len(syllabicator(term))
+        return current_score / total_syllables
+
+class F2(Object):
+
+    def __call__(self,
+                 relevant_term_sequence,
+                 tokenized_sentence,
+                 relevance_table,
+                 syllabicator):
+        '''(sum of rel term lklihoods * lambda / number of terms) - syllable entropy
+        '''
+        current_score = 0.
+        for term in relevant_term_sequence:
+            current_score += relevance_table[term]
+
+        current_score /= len(tokenized_sentence)
+        syllable_entropy = syllable_metric_entropy(tokenized_sentence, syllabicator)
+        return current_score - syllable_entropy
+
+class F3(Object):
+
+    def __call__(self,
+                 relevant_term_sequence,
+                 tokenized_sentence,
+                 lemmatized_sentence,
+                 relevance_table,
+                 idf_table,
+                 syllabicator):
+        '''(sum of rel term tfidf scores * lambda) / number of syllables
+        '''
+        current_score = 0.
+        for term in relevant_term_sequence:
+            tfidf_score = calculate_tf(term, lemmatized_sentence) * idf[term]
+            current_score += tfidf_score * relevance_table[term]
+        # total syllables
+        total_syllables = 0.
+        for term in tokenized_sentence:
+            total_syllables += len(syllabicator(term))
+        return current_score / total_syllables
+
+def summarizer(D_path, f_method, seq_method, session_id="1"):
+
+    if f_method == "f1":
+        f = F1()
+    elif f_method == "f2":
+        f = F2()
+    elif f_method == "f3":
+        f = F3()
     else:
-        overlap_result, overlap_result_indexes = probabilistic_tokens(tokens_1, tokens_2)
+        raise Exception("Invalid relevance function")
 
-    index1 = create_index(sents_w_tokenization_1)
-    index2 = create_index(sents_w_tokenization_2)
-
-    overlap_probabilities = {}
-    # New weights
-    for term in overlap_result:
-        if term not in previous_overlap_terms_index.keys():
-            previous_overlap_terms_index[term] = 1
-        else:
-            previous_overlap_terms_index[term] += 1
-        previous_overlap_terms_index["__len__"] = 1 +\
-                                previous_overlap_terms_index.get("__len__", 0)
-        overlap_probabilities[term] = previous_overlap_terms_index[term] /\
-                                      previous_overlap_terms_index["__len__"]
-
-    assert(len(overlap_result) > 0)
-    # Count overlapping tokens
-    summary = []
-    summary_sentence_scores = []
-    # Calculate candidates
-    for i, j in overlap_result_indexes:
-        # Get candidate pairs
-        if index1[i] not in summary:
-            raw_tokenization_1 = raw_tokenize(index1[i][0], lang_stopwords)
-            syllable_count_1 = sylcount_calculation(raw_tokenization_1)
-            if index2[j] not in summary:
-                raw_tokenization_2 = raw_tokenize(index2[j][0], lang_stopwords)
-                syllable_count_2 = sylcount_calculation(raw_tokenization_2)
-
-                # Sentence from first doc
-                if scoring == "zero":
-                    overlaps, _ = overlapping_tokens(overlap_result, index1[i][1])
-                else:
-                    overlaps, _ = probabilistic_tokens(overlap_result, index1[i][1])
-                overlap_value = 0
-                if with_tfidf:
-                    for term in overlaps:
-                        term_weight = calculate_tf(term, index1[i][1]) * idf[term]
-                        overlap_value += term_weight *\
-                                         previous_overlap_terms_index[term]
-                    #score1 = overlap_value
-                    score1 = overlap_value / syllable_count_1
-                else:
-                    for term in overlaps:
-                        if not with_entropy:
-                            overlap_value += overlap_probabilities[term]
-                        else:
-                            overlap_value += previous_overlap_terms_index[term]
-                    if not with_entropy:
-                        score1 = overlap_value / syllable_count_1
-                    else:
-                        score1 = overlap_value / len(index1[i][1])
-
-                if with_entropy:
-                    score1 -= entropy_calculation([raw_tokenization_1,
-                                                   index1[i][1]])
-                elif with_readability:
-                    #score1 += 2 * readability_measure([index1[i][1]])
-                    try:
-                        score1 = score1/len(overlaps) + readability_measure([index1[i][1]])
-                    except:
-                        score1 = 0
-                elif with_inverse_readability:
-                    #score1 += 2 * invert(readability_measure, [index1[i][1]])
-                    try:
-                        score1 = score1/len(overlaps) + invert(readability_measure, [index1[i][1]])
-                    except:
-                        score1 = 0
-
-                # Sentence from second doc
-                if scoring == "zero":
-                    overlaps, _ = overlapping_tokens(overlap_result, index2[j][1])
-                else:
-                    overlaps, _ = probabilistic_tokens(overlap_result, index2[j][1])
-                overlap_value = 0
-                if with_tfidf:
-                    for term in overlaps:
-                        term_weight = calculate_tf(term, index2[j][1]) * idf[term]
-                        overlap_value += term_weight *\
-                                         previous_overlap_terms_index[term]
-                    #score2 = overlap_value
-                    score2 = overlap_value / syllable_count_2
-                else:
-                    for term in overlaps:
-                        if not with_entropy:
-                            overlap_value += overlap_probabilities[term]
-                        else:
-                            overlap_value += previous_overlap_terms_index[term]
-                    if not with_entropy:
-                        score2 = overlap_value / syllable_count_2
-                    else:
-                        score2 = overlap_value / len(index2[j][1])
-
-                if with_entropy:
-                    score2 -= entropy_calculation([raw_tokenization_2,
-                                                   index2[j][1]])
-                elif with_readability:
-                    #score2 += 2 * readability_measure([index2[j][1]])
-                    try:
-                        score2 = score2/len(overlaps) + readability_measure([index2[j][1]])
-                    except:
-                        score2 = 0
-                elif with_inverse_readability:
-                    #score2 += 2 * invert(readability_measure, [index2[j][1]])
-                    try:
-                        score2 = score2/len(overlaps) + invert(readability_measure, [index2[j][1]])
-                    except:
-                        score2 = 0
-
-                if score1 >= score2:
-                    summary.append(index1[i])
-                    summary_sentence_scores.append(score1)
-                else:
-                    summary.append(index2[j])
-                    summary_sentence_scores.append(score2)
-    return summary, overlap_result, previous_overlap_terms_index,\
-            summary_sentence_scores
-
-def mixed_summary_indexes(sents_w_tokenization_1, tokens_1,
-                          sents_w_tokenization_2, tokens_2,
-                          language="en", additions="none",
-                          previous_lcs_terms_index={}):
-    '''Returns one summary with sentences from both docs
-    previous_lcs_terms_index gives an additional value to terms'''
-
-    with_tfidf = False
-    with_entropy = False
-    with_readability = False
-    with_inverse_readability = False
-
-    readability_measure = None
-    if language == "en":
-        readability_measure = flesch_kincaid
-        lang_stopwords = en_stopwords
-    elif language == "es":
-        readability_measure = szigriszt_pazos
-        lang_stopwords = es_stopwords
+    if seq_method == "partial":
+        seq = overlapping_tokens
+    elif seq_method == "probabilistic":
+        seq = probabilistic_tokens
+    elif seq_method == "lcs":
+        seq = lcs_tokens
     else:
-        raise ValueError("Not english nor spanish")
+        raise Exception("Invalid relevance term sequence calculation method")
 
-    entropy_calculation = partial(sentence_syllable_metric_entropy,
-                                  language)
-    sylcount_calculation = partial(count_syllables,
-                                   language)
+    D = Document(input_path, RS._lemmatizer)
 
-    if additions != 'none':
-        if additions == "tfidf" :
-            with_tfidf = True
-        elif additions == "entropy" :
-            with_entropy = True
-        elif additions == "readability" :
-            with_readability = True
-        elif additions == "inverse_readability" :
-            with_inverse_readability = True
-        elif additions == "tfidf_readability" :
-            with_tfidf = True
-            with_readability = True
-        elif additions == "tfidf_inverse_readability" :
-            with_tfidf = True
-            with_inverse_readability = True
-        else:
-            raise ValueError("Unknown Scoring function %s" % additions)
+    if os.exists("../data/running_summary_%d.pickle" % session_id):
+        with open("../data/running_summary_%d.pickle" % session_id, "rb") as fp:
+            RS = pickle.load(fp)
+    else:
+        RS = None
 
-        if with_tfidf:
-            # Get idf considering all sentences (both docs)
-            idf = calculate_idf(
-                [doc[1] for doc in sents_w_tokenization_1 + sents_w_tokenization_2]
-                    )
-    lcs_result = lcs(tokens_1, tokens_2)
-    lcs_result_indexes = lcs_indexes(tokens_1, tokens_2)
+    if os.exists("../data/lookup_table_%d.pickle" % session_id):
+        with open("../data/lookup_table_%d.pickle" % session_id, "rb") as fp:
+            lookup_table = pickle.load(fp)
+    else:
+        lookup_table = {}
 
-    index1 = create_index(sents_w_tokenization_1)
-    index2 = create_index(sents_w_tokenization_2)
+    if RS is None:
+        RS = D
+    else:
+        # Calculate idf for tfidf, preemtively
+        idf = calculate_idf(RS.lem_sentences, D.lem_sentences)
 
-    overlap_probabilities = {}
-    # New weights
-    for term in lcs_result:
-        if term not in previous_lcs_terms_index.keys():
-            previous_lcs_terms_index[term] = 1
-        else:
-            previous_lcs_terms_index[term] += 1
-        previous_lcs_terms_index["__len__"] = 1 +\
-                                previous_lcs_terms_index.get("__len__", 0)
-        overlap_probabilities[term] = previous_lcs_terms_index[term] /\
-                                      previous_lcs_terms_index["__len__"]
+        # Algorithm starts properly
+        sequence_of_rt, index_pairs = seq(RS.lem_text,
+                                          D.lem_text)
 
-    doc1_candidates = []
-    doc1_candidate_scores = []
-    doc1_candidate_indexes = []
-    step = []
-    for i, _ in lcs_result_indexes:
-        if index1[i] not in doc1_candidates:
-            raw_tokenization_1 = raw_tokenize(index1[i][0], lang_stopwords)
-            syllable_count_1 = sylcount_calculation(raw_tokenization_1)
+        index_to_sent_in_RS = create_index(RS.aligned_sentences)
+        index_to_sent_in_D = create_index(D.aligned_sentences)
 
-            phrase_lcs = lcs(lcs_result, index1[i][1])
-            lcs_value = 0
+        new_RS = []
+        new_RS_sent_scores = []
 
-            if with_tfidf:
-                for term in phrase_lcs:
-                    term_weight = calculate_tf(term, index1[i][1]) * idf[term]
-                    lcs_value += term_weight *\
-                                 previous_lcs_terms_index[term]
-                #score = lcs_value
-                score = lcs_value / syllable_count_1
+        for term in sequence_of_rt:
+            # Log terms
+            lookup_table[term] = lookup_table.get(term, 0) + 1
+        likelihoods = get_likelihoods(lookup_table)
+
+        while len(sequence_of_rt) > 0:
+            term = sequence_of_rt.pop(0)
+            term_index_in_RS, term_index_in_D = index_pairs.pop(0)
+
+            # Recover sentences
+            candidate_in_RS = index_to_sent_in_RS[term_index_in_RS]
+            candidate_in_D = index_to_sent_in_D[term_index_in_D]
+
+            if f_method == "f1":
+                score_for_RS_candidate = f(sequence_of_rt,
+                                           candidate_in_RS[2],
+                                           likelihoods,
+                                           RS._syllabicator
+                                          )
+                score_for_D_candidate = f(sequence_of_rt,
+                                          candidate_in_D[2],
+                                          likelihoods,
+                                          D._syllabicator
+                                         )
+            elif f_method == "f2":
+                score_for_RS_candidate = f(sequence_of_rt,
+                                           candidate_in_RS[2],
+                                           lookup_table,
+                                           RS._syllabicator
+                                          )
+                score_for_D_candidate = f(sequence_of_rt,
+                                          candidate_in_D[2],
+                                          lookup_table,
+                                          D._syllabicator
+                                         )
+            elif f_method == "f3":
+                score_for_RS_candidate = f(sequence_of_rt,
+                                           candidate_in_RS[2],
+                                           candidate_in_RS[3],
+                                           lookup_table,
+                                           idf,
+                                           RS._syllabicator
+                                          )
+                score_for_D_candidate = f(sequence_of_rt,
+                                          candidate_in_D[2],
+                                          candidate_in_D[3],
+                                          lookup_table,
+                                          idf,
+                                          D._syllabicator
+                                         )
+
+            if score_for_RS_candidate > score_for_D_candidate:
+                new_RS.append(candidate_in_RS)
+                new_RS_sent_scores.append(score_for_RS_candidate)
+                # remove other terms from the sequence if included in the
+                # candidate
+                for i in range(len(sequence_of_rt)):
+                    future_term_index_in_RS = index_pairs[i][0]
+                    future_candidate_in_RS =\
+                        index_to_sent_in_RS[future_term_index_in_RS]
+                    if future_candidate_in_RS[0] == candidate_in_RS[0]:
+                        # Same sentence --> remove
+                        del sequence_of_rt[i]
+                        del index_pairs[i]
             else:
-                for term in phrase_lcs:
-                    if not with_entropy:
-                        lcs_value += overlap_probabilities[term]
-                    else:
-                        lcs_value += previous_lcs_terms_index[term]
-                if not with_entropy:
-                    score = lcs_value / syllable_count_1
-                else:
-                    score = lcs_value / len(index1[i][1])
+                new_RS.append(candidate_in_D)
+                new_RS_sent_scores.append(score_for_D_candidate)
+                # remove other terms from the sequence if included in the
+                # candidate
+                for i in range(len(sequence_of_rt)):
+                    future_term_index_in_D = index_pairs[i][1]
+                    future_candidate_in_D =\
+                        index_to_sent_in_D[future_term_index_in_D]
+                    if future_candidate_in_D[0] == candidate_in_D[0]:
+                        # Same sentence --> remove
+                        del sequence_of_rt[i]
+                        del index_pairs[i]
 
-            if with_entropy:
-                score -= entropy_calculation([raw_tokenization_1,
-                                              index1[i][1]])
-            elif with_readability:
-                #score += 2 * readability_measure([index1[i][1]])
-                score = score/len(phrase_lcs) + readability_measure([index1[i][1]])
-            elif with_inverse_readability:
-                #score += 2 * invert(readability_measure, [index1[i][1]])
-                score = score/len(phrase_lcs) + invert(readability_measure, [index1[i][1]])
-            doc1_candidate_scores.append(score)
-            doc1_candidates.append(index1[i])
-            if len(step) > 0 :
-                doc1_candidate_indexes.append(step)
-            step = [i]
-        else:
-            step.append(i)
-    doc1_candidate_indexes.append(step)
+    new_RS_raw_sentences = []
+    for _, raw_sentence, _, _ in new_RS:
+        new_RS_raw_sentences.append(raw_sentence)
 
-    doc2_candidates = []
-    doc2_candidate_scores = [ ]
-    doc2_candidate_indexes = []
-    step = []
-    for _, j in lcs_result_indexes:
-        if index2[j] not in doc2_candidates:
-            raw_tokenization_2 = raw_tokenize(index2[j][0], lang_stopwords)
-            syllable_count_2 = sylcount_calculation(raw_tokenization_2)
+    # Replace old RS
+    RS = Document("\n".join(new_RS_raw_sentences), RS.lemmatizer,
+                  remove_stopwords=remove_stopwords)
 
-            phrase_lcs = lcs(lcs_result, index2[j][1])
-            lcs_value = 0
+    with open("../data/running_summary_%d.pickle" % session_id, "wb") as fp:
+        pickle.dump(RS, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
-            if with_tfidf:
-                for term in phrase_lcs:
-                    term_weight = calculate_tf(term, index2[j][1]) * idf[term]
-                    lcs_value += term_weight *\
-                                 previous_lcs_terms_index[term]
-                #score = lcs_value
-                score = lcs_value / syllable_count_2
-            else:
-                for term in phrase_lcs:
-                    if not with_entropy:
-                        lcs_value += overlap_probabilities[term]
-                    else:
-                        lcs_value += previous_lcs_terms_index[term]
-                if not with_entropy:
-                    score = lcs_value / syllable_count_2
-                else:
-                    score = lcs_value / len(index2[j][1])
+    with open("../data/lookup_table_%d.pickle" % session_id, "wb") as fp:
+        pickle.dump(lookup_table, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
-            if with_entropy:
-                score -= entropy_calculation([raw_tokenization_2,
-                                              index2[j][1]])
-            elif with_readability:
-                #score += 2 * readability_measure([index2[j][1]])
-                score = score/len(phrase_lcs) + readability_measure([index2[j][1]])
-            elif with_inverse_readability:
-                #score += 2 * invert(readability_measure, [index2[j][1]])
-                score = score/len(phrase_lcs) + invert(readability_measure, [index2[j][1]])
+    return RS, new_RS_sent_scores
 
-            doc2_candidate_scores.append(score)
-            doc2_candidates.append(index2[j])
-            if len(step) > 0 :
-                doc2_candidate_indexes.append(step)
-            step = [j]
-        else:
-            step.append(i)
-    doc2_candidate_indexes.append(step)
-
-    assert(len(doc1_candidates) > 0)
-    assert(len(doc2_candidates) > 0)
-
-    # Calculate summary
-    modifiable_lcs_result = lcs_result.copy()
-    summary = []
-    summary_sentence_scores = []
-
-    doc1_candidate = doc1_candidates.pop(0)
-    doc1_score = doc1_candidate_scores.pop(0)
-    doc1_indexes = doc1_candidate_indexes.pop(0)
-
-    doc2_candidate = doc2_candidates.pop(0)
-    doc2_score = doc2_candidate_scores.pop(0)
-    doc2_indexes = doc2_candidate_indexes.pop(0)
-    while len(modifiable_lcs_result) > 0:
-        # The sentence of 1 has larger score thant 2
-        if doc1_score >= doc2_score:
-            # Add to the summary
-            summary.append(doc1_candidate)
-            summary_sentence_scores.append(doc1_score)
-            # Check how many LCS terms we have covered
-            # and remove them from the running sequence
-            total_to_remove = len(doc1_indexes)
-            del modifiable_lcs_result[:total_to_remove]
-            # The current doc1 sentences was added to the summary, get 
-            # the next one
-            try:
-                doc1_candidate = doc1_candidates.pop(0)
-                doc1_score = doc1_candidate_scores.pop(0)
-                doc1_indexes = doc1_candidate_indexes.pop(0)
-            except:
-                assert(len(modifiable_lcs_result) == 0)
-            # Stop considering them in document2
-            while total_to_remove > 0:
-                doc2_indexes.pop(0)
-                total_to_remove -= 1
-                # The sentences has no LCS terms anymore, consider
-                # the next one
-                if len(doc2_indexes) == 0:
-                    try:
-                       doc2_candidate = doc2_candidates.pop(0)
-                       doc2_score = doc2_candidate_scores.pop(0)
-                       doc2_indexes = doc2_candidate_indexes.pop(0)
-                    except:
-                        assert(len(modifiable_lcs_result) == 0)
-            # Recalculate doc2 score considering the corrected qty of lcs terms
-            raw_tokenization_2 = raw_tokenize(doc2_candidate[0], lang_stopwords)
-            syllable_count_2 = sylcount_calculation(raw_tokenization_2)
-
-            lcs_value = 0
-            if with_tfidf:
-                for i in range(len(doc2_indexes)):
-                    term_weight = calculate_tf(modifiable_lcs_result[i],
-                            doc2_candidate[1]) * idf[modifiable_lcs_result[i]]
-                    lcs_value += term_weight *\
-                                 previous_lcs_terms_index[modifiable_lcs_result[i]]
-                #doc2_score = lcs_value
-                doc2_score = lcs_value / syllable_count_2
-            else:
-                for i in range(len(doc2_indexes)):
-                    if not with_entropy:
-                        lcs_value += overlap_probabilities[modifiable_lcs_result[i]]
-                    else:
-                        lcs_value += previous_lcs_terms_index[modifiable_lcs_result[i]]
-                if not with_entropy:
-                    doc2_score = lcs_value / syllable_count_2
-                else:
-                    doc2_score = lcs_value / len(doc2_candidate[1])
-            if with_entropy:
-                doc2_score -= entropy_calculation([raw_tokenization_2,
-                                                   doc2_candidate[1]])
-            elif with_readability:
-                #doc2_score += 2 * readability_measure([doc2_candidate[1]])
-                try:
-                    doc2_score = doc2_score/len(doc2_indexes) +\
-                            readability_measure([doc2_candidate[1]])
-                except:
-                    doc2_score = 0
-            elif with_inverse_readability:
-                #doc2_score += 2 * invert(readability_measure,
-                #                         [doc2_candidate[1]])
-                try:
-                    doc2_score = doc2_score/len(doc2_indexes) + invert(readability_measure,
-                                                                       [doc2_candidate[1]])
-                except:
-                    doc2_score = 0
-        else: # doc2 sentence scores higher than doc1 sentence
-            # Add to the summary
-            summary.append(doc2_candidate)
-            summary_sentence_scores.append(doc2_score)
-            # Check how many LCS terms we have covered
-            # and remove them from the running sequence
-            total_to_remove = len(doc2_indexes)
-            del modifiable_lcs_result[:total_to_remove]
-            # The current doc2 sentences was added to the summary, get 
-            # the next one
-            try:
-               doc2_candidate = doc2_candidates.pop(0)
-               doc2_score = doc2_candidate_scores.pop(0)
-               doc2_indexes = doc2_candidate_indexes.pop(0)
-            except:
-                assert(len(modifiable_lcs_result) == 0)
-            # Stop considering them in document1
-            while total_to_remove > 0:
-                doc1_indexes.pop(0)
-                total_to_remove -= 1
-                # The sentences has no LCS terms anymore, consider
-                # the next one
-                if len(doc1_indexes) == 0:
-                    try:
-                        doc1_candidate = doc1_candidates.pop(0)
-                        doc1_score = doc1_candidate_scores.pop(0)
-                        doc1_indexes = doc1_candidate_indexes.pop(0)
-                    except:
-                        assert(len(modifiable_lcs_result) == 0)
-            # Recalculate doc1 score considering the corrected qty of lcs terms
-            raw_tokenization_1 = raw_tokenize(doc1_candidate[0], lang_stopwords)
-            syllable_count_1 = sylcount_calculation(raw_tokenization_1)
-
-            lcs_value = 0
-            if with_tfidf:
-                for i in range(len(doc1_indexes)):
-                    term_weight = calculate_tf(modifiable_lcs_result[i],
-                            doc1_candidate[1]) * idf[modifiable_lcs_result[i]]
-                    lcs_value += term_weight *\
-                                 previous_lcs_terms_index[modifiable_lcs_result[i]]
-                #doc1_score = lcs_value
-                doc1_score = lcs_value / syllable_count_1
-            else:
-                for i in range(len(doc1_indexes)):
-                    if not with_entropy:
-                        lcs_value += overlap_probabilities[modifiable_lcs_result[i]]
-                    else:
-                        lcs_value += previous_lcs_terms_index[modifiable_lcs_result[i]]
-                if not with_entropy:
-                    doc1_score = lcs_value / syllable_count_1
-                else:
-                    doc1_score = lcs_value / len(doc1_candidate[1])
-
-            if with_entropy:
-                doc1_score -= entropy_calculation([raw_tokenization_1,
-                                                   doc1_candidate[1]])
-            elif with_readability:
-                #doc1_score += 2 * readability_measure([doc1_candidate[1]])
-                try:
-                    doc1_score = doc1_score/len(doc1_indexes) + readability_measure([doc1_candidate[1]])
-                except:
-                    doc1_score = 0
-            elif with_inverse_readability:
-                #doc1_score += 2 * invert(readability_measure,
-                #                         [doc1_candidate[1]])
-                try:
-                    doc1_score = doc1_score/len(doc1_indexes) + invert(readability_measure,
-                                                                       [doc1_candidate[1]])
-                except:
-                    doc1_score = 0
-
-    return summary, lcs_result, previous_lcs_terms_index,\
-            summary_sentence_scores
-
-def summary_limit(summary_sentences, sentence_scores, byte_limit):
-    limited_summary = []
-    current_length = 0
-    score_position = [(i,score) for i, score in enumerate(sentence_scores)]
-    score_position.sort(key=lambda x:x[1], reverse=True)
-
-    for position, score in score_position:
-        raw_sent, _ = summary_sentences[position]
-        if (current_length + len(raw_sent.encode("utf-8"))) <= byte_limit:
-            limited_summary.append(position)
-            current_length += len(raw_sent.encode("utf-8"))
-    limited_summary.sort()
-    limited_summary = [summary_sentences[pos] for pos in limited_summary]
-    return limited_summary
-
-def summary_wordlimit(summary_sentences, sentence_scores, word_limit):
-    limited_summary = []
-    current_length = 0
-    score_position = [(i,score) for i, score in enumerate(sentence_scores)]
-    score_position.sort(key=lambda x:x[1], reverse=True)
-
-    for position, score in score_position:
-        raw_sent, _ = summary_sentences[position]
-        if (current_length + raw_sent.count(" ") + 1) <= word_limit:
-            limited_summary.append(position)
-            current_length += raw_sent.count(" ") + 1
-    limited_summary.sort()
-    limited_summary = [summary_sentences[pos] for pos in limited_summary]
-    return limited_summary

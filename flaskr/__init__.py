@@ -20,6 +20,8 @@ pyphen_dicts = {"de" : "de_DE",
                 "ro" : "ro",
                 "sv" : "sv"}
 
+import ipdb;ipdb.set_trace()
+
 def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
