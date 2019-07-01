@@ -174,8 +174,11 @@ class F3(object):
         return current_score / total_syllables
 
 def clean_working_memory():
-    for f_path in os.listdir("./data/temp/"):
-        os.remove("./data/temp/" + f_path)
+    try:
+        for f_path in os.listdir("./data/temp/"):
+            os.remove("./data/temp/" + f_path)
+    except:
+        pass
 
 def summarizer(D_path, f_method, seq_method, lemmatizer, session_id=1):
 
