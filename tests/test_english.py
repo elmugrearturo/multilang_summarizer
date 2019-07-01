@@ -3,27 +3,26 @@ from multilang_summarizer.lemmatizer import Lemmatizer
 import xml.etree.ElementTree as ET
 from multilang_summarizer.summarizer import Document, summarizer, summary_limit, summary_wordlimit
 
-from multilang_summarizer.readability import szigriszt_pazos
+from multilang_summarizer.readability import flesch_kincaid
 
 import random
 
 import os
 
-test_dir = "./test_documents/es/"
-output_dir = "./output_documents/es/"
-data_dir = "./data/es/"
+test_dir = "./test_documents/en/"
+output_dir = "./output_documents/en/"
+data_dir = "./data/en/"
 
-#test_xml = "./test_documents/news05 tailandia-ninios.xml"
-#tree = ET.parse(test_xml)
-#root = tree.getroot()
-#current_text = 1
-#for child in root:
-#    for subchild in child:
-#        if subchild.tag == "content":
-#            path = "./test_documents/%d.txt" % current_text
-#            with open(path, "w") as fp:
-#                fp.write(subchild.text)
-#            current_text += 1
+current_source = 0
+for f_path in os.listdir(test_dir):
+    if not f_path.endswith(".txt"):
+        document_path = test_dir + f_path
+        tree = ET.parse(document_path)
+        root = tree.getroot()
+        original_text = root.find("TEXT").text
+        with open(test_dir + "%d.txt" % current_source, "w") as fp:
+            fp.write(original_text)
+        current_source += 1
 
 # Try to create needed dirs in the beginning
 try:
@@ -51,7 +50,7 @@ for f_path in os.listdir(test_dir):
 
 random.shuffle(paths)
 
-lemmatizer = Lemmatizer.for_language("es")
+lemmatizer = Lemmatizer.for_language("en")
 
 RS = {}
 scores = {}
@@ -70,7 +69,7 @@ for path in paths:
 
     print("Processed:", path)
 
-byte_limit = 661 # number of words
+byte_limit = 661 # bytes
 for i in range(1, 10):
     limited_summary = summary_limit(RS[i].aligned_sentences, scores[i],
                                     byte_limit)
@@ -82,7 +81,7 @@ for i in range(1, 10):
     print("\n\n", i, "\n\n", raw_limited_summary)
     limited_summary = Document(output_dir + "limited_summary_%d.txt" %i,
                                lemmatizer)
-    print("\nReadability", szigriszt_pazos(limited_summary.tok_sentences))
+    print("\nReadability", flesch_kincaid(limited_summary.tok_sentences))
 
 # Cleanup
 for f_path in os.listdir(data_dir):
