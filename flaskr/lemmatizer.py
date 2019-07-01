@@ -147,7 +147,10 @@ class Lemmatizer(object):
         return hyphenated.split("-")
 
     def tokenize(self, text):
-        return re.sub(r' +', ' ', text).split(" ")
+        unclean_tokenized_text = re.sub(r' +', ' ', text).split(" ")
+        tokenized_text = [token for token in unclean_tokenized_text if token !=
+                         ""]
+        return tokenized_text
 
     def __getitem__(self, key):
         try:
@@ -189,44 +192,45 @@ class Lemmatizer(object):
 
         return sentences, tok_sentences, lem_sentences
 
-def lemma_index(language_code, languages_path="./languages/"):
-    '''
-    ast - Asturian
-    bg - Bulgarian
-    ca - Catalan
-    cs - Czech
-    cy - Welsh
-    de - German
-    en - English
-    es - Spanish
-    et - Estonian
-    fa - Farsi
-    fr - French
-    ga - Irish
-    gd - Scottish Gaelic
-    gl - Galician
-    gv - Manx Gaelic
-    hu - Hungarian
-    it - Italian
-    pt - Portuguese
-    ro - Romanian
-    sk - Slovak
-    sl - Slovene
-    sv - Swedish
-    uk - Ukrainian
-    '''
-    if languages_path.endswith(os.sep):
-        languages_path = languages_path[:-1]
-
-    file_path = "%s/lemmatization-%s.txt" % (languages_path, language_code)
-
-    index = OrderedDict({})
-    with open(file_path, "r") as f:
-        for line in f:
-            try:
-                value, key = line.replace("\ufeff", "").strip().split("\t")
-            except:
-                print(language_index[language_code])
-                pass
-            index[key] = value
-    return Lemmatizer(index, language_code, language_index[language_code])
+    @classmethod
+    def for_language(klass, language_code, languages_path="./languages/"):
+        '''
+        ast - Asturian
+        bg - Bulgarian
+        ca - Catalan
+        cs - Czech
+        cy - Welsh
+        de - German
+        en - English
+        es - Spanish
+        et - Estonian
+        fa - Farsi
+        fr - French
+        ga - Irish
+        gd - Scottish Gaelic
+        gl - Galician
+        gv - Manx Gaelic
+        hu - Hungarian
+        it - Italian
+        pt - Portuguese
+        ro - Romanian
+        sk - Slovak
+        sl - Slovene
+        sv - Swedish
+        uk - Ukrainian
+        '''
+        if languages_path.endswith(os.sep):
+            languages_path = languages_path[:-1]
+    
+        file_path = "%s/lemmatization-%s.txt" % (languages_path, language_code)
+    
+        index = OrderedDict({})
+        with open(file_path, "r") as f:
+            for line in f:
+                try:
+                    value, key = line.replace("\ufeff", "").strip().split("\t")
+                except:
+                    print(language_index[language_code])
+                    pass
+                index[key] = value
+        return Lemmatizer(index, language_code, language_index[language_code])

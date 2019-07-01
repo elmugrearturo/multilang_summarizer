@@ -1,6 +1,3 @@
-from textstat.textstat import textstat
-from hyphen import Hyphenator
-from spanish_syllabicator import Silabicador
 from math import log
 from statistics import mean, stdev, variance
 from collections import Counter
@@ -107,29 +104,3 @@ def syllable_metric_entropy(sentence, syllabicator):
 
     return syllable_entropy
 
-def sentence_syllable_metric_entropy(language, sentence):
-    h_en = Hyphenator('en_US')
-    syl = Silabicador()
-
-    raw_sentence, tokenized_sentence = sentence
-
-    lengths = []
-    num_of_syllables = []
-    syllables = []
-    for token in raw_sentence:
-        if language == "en":
-            split_token = h_en.syllables(token)
-            if len(split_token) == 0:
-                split_token = [token]
-        else:
-            split_token = syl(token)[0]
-        syllables += split_token
-        num_of_syllables.append(len(split_token))
-        lengths.append(len(token))
-
-    try:
-        syllable_entropy = metric_shannon_entropy(syllables)
-    except:
-        syllable_entropy = 1.0
-
-    return syllable_entropy

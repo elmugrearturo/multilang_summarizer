@@ -1,11 +1,9 @@
 import copy
-import duc
 import os
 import sys
 import xml.etree.ElementTree as ET
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-from processing import *
 from string import punctuation
 
 sys.setrecursionlimit(2000)
@@ -80,23 +78,3 @@ def all_lcs(s1, s2, joiner=""):
     for elem in all_backtrack_lcs_matrix(matrix, s1, s2, len(s1), len(s2)):
         result.append(joiner.join(elem))
     return list(set(result))
-                                  
-      
-
-#import ipdb;ipdb.set_trace()
-#funcion de prueba    
-#documents = duc.get_rouge_document(data_folder_original)
-
-# tokenized_phrase1 = "la fea casa es verde y fria".split(" ")
-# tokenized_phrase2 = "la casa fea es fria y verde".split(" ")
-
-# str1 = "abcabcaa"
-# str2 = "acbacba"
-
-# print("De '" + str1 + "' y '" + str2 + "':")
-# print("LCS:", lcs(str1, str2))
-# print("All LCS:", all_lcs(str1, str2))
-# print("De '" + " ".join(tokenized_phrase1) + "' y '" +\
-#       " ".join(tokenized_phrase2) + "':")
-# print("LCS:", lcs(tokenized_phrase1, tokenized_phrase2, " "))
-# print("All LCS", all_lcs(tokenized_phrase1, tokenized_phrase2, " "))

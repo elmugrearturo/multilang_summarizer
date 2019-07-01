@@ -2,25 +2,14 @@ import os
 
 from flask import Flask, render_template, request, url_for, redirect
 
-from flaskr.lemmatizer import lemma_index, language_index, nltk_stopwords
+from flaskr.lemmatizer import Lemmatizer, language_index, nltk_stopwords
 
-lemmatizers = {}
-for key in language_index:
-    if key in nltk_stopwords.keys():
-        lemmatizers[key] = lemma_index(key)
-        print(key, language_index[key])
-
-pyphen_dicts = {"de" : "de_DE",
-                "en" : "en",
-                "es" : "es",
-                "fr" : "fr",
-                "hu" : "hu_HU",
-                "it" : "it",
-                "pt" : "pt_BR",
-                "ro" : "ro",
-                "sv" : "sv"}
-
-import ipdb;ipdb.set_trace()
+#lemmatizers = {}
+#for key in language_index:
+#    if key in nltk_stopwords.keys():
+#        lemmatizers[key] = Lemmatizer.for_language(key)
+#        print(key, language_index[key])
+#
 
 def create_app(test_config=None):
     # create and configure the app

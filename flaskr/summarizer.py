@@ -13,7 +13,7 @@ from math import log
 from flaskr.lcs import *
 
 from flaskr.tfidf import calculate_tf, calculate_idf
-from flaskr.entropy import sentence_syllable_metric_entropy, conditional_entropy
+from flaskr.entropy import syllable_metric_entropy
 
 def get_likelihoods(lookup_table):
     likelihoods = {}
@@ -111,13 +111,13 @@ class Document(object):
 
         # align sentences
         self.aligned_sentences = []
-        for i in len(self.raw_sentences):
+        for i in range(len(self.raw_sentences)):
             self.aligned_sentences.append((self.raw_sentences[i],
                                            self.tok_sentences[i],
                                            self.lem_sentences[i]))
 
 
-class F1(Object):
+class F1(object):
 
     def __call__(self,
                  relevant_term_sequence,
@@ -128,14 +128,14 @@ class F1(Object):
         '''
         current_score = 0.
         for term in relevant_term_sequence:
-            current_score += likelihood[term]
+            current_score += likelihoods[term]
         # total syllables
         total_syllables = 0.
         for term in tokenized_sentence:
             total_syllables += len(syllabicator(term))
         return current_score / total_syllables
 
-class F2(Object):
+class F2(object):
 
     def __call__(self,
                  relevant_term_sequence,
@@ -152,14 +152,14 @@ class F2(Object):
         syllable_entropy = syllable_metric_entropy(tokenized_sentence, syllabicator)
         return current_score - syllable_entropy
 
-class F3(Object):
+class F3(object):
 
     def __call__(self,
                  relevant_term_sequence,
                  tokenized_sentence,
                  lemmatized_sentence,
                  relevance_table,
-                 idf_table,
+                 idf,
                  syllabicator):
         '''(sum of rel term tfidf scores * lambda) / number of syllables
         '''
@@ -173,7 +173,7 @@ class F3(Object):
             total_syllables += len(syllabicator(term))
         return current_score / total_syllables
 
-def summarizer(D_path, f_method, seq_method, session_id="1"):
+def summarizer(D_path, f_method, seq_method, lemmatizer, session_id=1):
 
     if f_method == "f1":
         f = F1()
@@ -193,25 +193,26 @@ def summarizer(D_path, f_method, seq_method, session_id="1"):
     else:
         raise Exception("Invalid relevance term sequence calculation method")
 
-    D = Document(input_path, RS._lemmatizer)
+    D = Document(D_path, lemmatizer)
 
-    if os.exists("../data/running_summary_%d.pickle" % session_id):
-        with open("../data/running_summary_%d.pickle" % session_id, "rb") as fp:
+    if os.path.exists("./data/running_summary_%d.pickle" % session_id):
+        with open("./data/running_summary_%d.pickle" % session_id, "rb") as fp:
             RS = pickle.load(fp)
     else:
         RS = None
 
-    if os.exists("../data/lookup_table_%d.pickle" % session_id):
-        with open("../data/lookup_table_%d.pickle" % session_id, "rb") as fp:
+    if os.path.exists("./data/lookup_table_%d.pickle" % session_id):
+        with open("./data/lookup_table_%d.pickle" % session_id, "rb") as fp:
             lookup_table = pickle.load(fp)
     else:
         lookup_table = {}
 
     if RS is None:
         RS = D
+        new_RS_sent_scores = None
     else:
-        # Calculate idf for tfidf, preemtively
-        idf = calculate_idf(RS.lem_sentences, D.lem_sentences)
+        # Calculate idf for tfidf, preemptively
+        idf = calculate_idf(RS.lem_sentences + D.lem_sentences)
 
         # Algorithm starts properly
         sequence_of_rt, index_pairs = seq(RS.lem_text,
@@ -279,41 +280,89 @@ def summarizer(D_path, f_method, seq_method, session_id="1"):
                 new_RS_sent_scores.append(score_for_RS_candidate)
                 # remove other terms from the sequence if included in the
                 # candidate
-                for i in range(len(sequence_of_rt)):
-                    future_term_index_in_RS = index_pairs[i][0]
-                    future_candidate_in_RS =\
-                        index_to_sent_in_RS[future_term_index_in_RS]
-                    if future_candidate_in_RS[0] == candidate_in_RS[0]:
-                        # Same sentence --> remove
-                        del sequence_of_rt[i]
-                        del index_pairs[i]
+                for_is_finished = False
+                breaked = False
+                while not for_is_finished:
+                    for i in range(len(sequence_of_rt)):
+                        future_term_index_in_RS = index_pairs[i][0]
+                        future_candidate_in_RS =\
+                            index_to_sent_in_RS[future_term_index_in_RS]
+                        if future_candidate_in_RS[0] == candidate_in_RS[0]:
+                            # Same sentence --> remove
+                            del sequence_of_rt[i]
+                            del index_pairs[i]
+                            breaked = True
+                            break
+                    if not breaked:
+                        for_is_finished = True
+                    else:
+                        breaked = False
             else:
                 new_RS.append(candidate_in_D)
                 new_RS_sent_scores.append(score_for_D_candidate)
                 # remove other terms from the sequence if included in the
                 # candidate
-                for i in range(len(sequence_of_rt)):
-                    future_term_index_in_D = index_pairs[i][1]
-                    future_candidate_in_D =\
-                        index_to_sent_in_D[future_term_index_in_D]
-                    if future_candidate_in_D[0] == candidate_in_D[0]:
-                        # Same sentence --> remove
-                        del sequence_of_rt[i]
-                        del index_pairs[i]
+                for_is_finished = False
+                breaked = False
+                while not for_is_finished:
+                    for i in range(len(sequence_of_rt)):
+                        future_term_index_in_D = index_pairs[i][1]
+                        future_candidate_in_D =\
+                            index_to_sent_in_D[future_term_index_in_D]
+                        if future_candidate_in_D[0] == candidate_in_D[0]:
+                            # Same sentence --> remove
+                            del sequence_of_rt[i]
+                            del index_pairs[i]
+                            breaked = True
+                            break
+                    if not breaked:
+                        for_is_finished = True
+                    else:
+                        breaked = False
 
-    new_RS_raw_sentences = []
-    for _, raw_sentence, _, _ in new_RS:
-        new_RS_raw_sentences.append(raw_sentence)
+        new_RS_raw_sentences = []
+        for _, raw_sentence, _, _ in new_RS:
+            new_RS_raw_sentences.append(raw_sentence)
 
-    # Replace old RS
-    RS = Document("\n".join(new_RS_raw_sentences), RS.lemmatizer,
-                  remove_stopwords=remove_stopwords)
+        # Replace old RS
+        with open("./data/running_summary_%d.txt" % session_id, "w") as fp:
+            fp.write("\n".join(new_RS_raw_sentences))
+        RS = Document("./data/running_summary_%d.txt" % session_id, lemmatizer)
 
-    with open("../data/running_summary_%d.pickle" % session_id, "wb") as fp:
+    with open("./data/running_summary_%d.pickle" % session_id, "wb") as fp:
         pickle.dump(RS, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
-    with open("../data/lookup_table_%d.pickle" % session_id, "wb") as fp:
+    with open("./data/lookup_table_%d.pickle" % session_id, "wb") as fp:
         pickle.dump(lookup_table, fp, protocol=pickle.HIGHEST_PROTOCOL)
 
     return RS, new_RS_sent_scores
 
+def summary_limit(summary_sentences, sentence_scores, byte_limit):
+    limited_summary = []
+    current_length = 0
+    score_position = [(i,score) for i, score in enumerate(sentence_scores)]
+    score_position.sort(key=lambda x:x[1], reverse=True)
+
+    for position, score in score_position:
+        raw_sent, _, _ = summary_sentences[position]
+        if (current_length + len(raw_sent.encode("utf-8"))) <= byte_limit:
+            limited_summary.append(position)
+            current_length += len(raw_sent.encode("utf-8"))
+    limited_summary.sort()
+    limited_summary = [summary_sentences[pos] for pos in limited_summary]
+    return limited_summary
+
+def summary_wordlimit(summary_sentences, sentence_scores, word_limit):
+    limited_summary = []
+    current_length = 0
+    score_position = [(i,score) for i, score in enumerate(sentence_scores)]
+    score_position.sort(key=lambda x:x[1], reverse=True)
+
+    for position, score in score_position:
+        raw_sent, _, _ = summary_sentences[position]
+        if (current_length + raw_sent.count(" ") + 1) <= word_limit:
+            limited_summary.append(position)
+            current_length += raw_sent.count(" ") + 1
+    limited_summary.sort()
+    limited_summary = [summary_sentences[pos] for pos in limited_summary]
+    return limited_summary
