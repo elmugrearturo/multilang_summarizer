@@ -12,7 +12,7 @@ This package implements an online multi-document summarization algorithm, intend
 * 'ro': 'Romanian'
 * 'sv': 'Swedish'
 
-This work was partially supported by the National Council of Science and Technology (CONACYT) of Mexico, as part of the Cátedras CONACYT project _Infraestructura para agilizar el desarrollo de sistemas centrados en el usuario_, Ref. 3053.
+This work was supported by the National Council of Science and Technology (CONACYT) of Mexico, as part of the Cátedras CONACYT project _Infraestructura para agilizar el desarrollo de sistemas centrados en el usuario_, Ref. 3053.
 
 ### Prerequisites
 
