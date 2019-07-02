@@ -65,7 +65,7 @@ from multilang_summarizer.lemmatizer import Lemmatizer
 lemmatizer = Lemmatizer.for_language("en")
 ```
 
-Finally, session\_id tells the algorithm to which running summary D\_path is adding to. Different sessions can be opened at once. To clean the cache __for all sessions__ use the following method:
+Finally, session\_id tells the algorithm to which running summary input D will be adding to. Different sessions can be opened at once. To clean the cache __for all sessions__ use the following method:
 
 ```
 from multilang_summarizer.summarizer import clean_working_memory
@@ -85,10 +85,10 @@ Two example scripts are provided in the repo:
 To run them, the documents in the test\_documents folder are required. Simply, execute
 
 ```
-python tests/test\_english.py
+python tests/test_english.py
 ``` 
 
-from the root folder.
+from the root folder after setup.
 
 ### Example results
 
@@ -126,7 +126,7 @@ Los 13 miembros están bien.
 
 ## License
 
-This project is licensed under the GPLv3 License - see the [LICENSE.md](LICENSE) file for details
+This project is licensed under the GPLv3 License - see the [LICENSE](LICENSE) file for details
 
 ## Acknowledgments
 
