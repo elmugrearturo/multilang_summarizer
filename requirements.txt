@@ -8,7 +8,7 @@ itsdangerous==1.1.0
 jedi==0.13.3
 Jinja2==2.10.1
 MarkupSafe==1.1.1
-nltk==3.4.3
+nltk==3.4.5
 numpy==1.16.4
 pandas==0.24.2
 pexpect==4.7.0
